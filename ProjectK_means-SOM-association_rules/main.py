@@ -16,24 +16,25 @@ for col in cat_cols:
 
 df_encoded = pd.get_dummies(df, columns=cat_cols, drop_first=True)
 
-#  (X - mean) / std
+# Standardize data (Z-score)
 X = df_encoded.values.astype(float)
 X_mean = np.mean(X, axis=0)
 X_std = np.std(X, axis=0)
 X_std[X_std == 0] = 1 
 X_scaled = (X - X_mean) / X_std
 
-
 # SOM
 class SelfOrganizingMap:
-    def __init__(self, width, height, input_dim, learning_rate=0.1, radius=None):
+    def __init__(self, width, height, input_dim, data, learning_rate=0.1, radius=None):
         self.width = width
         self.height = height
         self.input_dim = input_dim
         self.learning_rate = learning_rate
         self.radius = radius if radius else max(width, height) / 2
 
-        self.weights = np.random.random((width, height, input_dim))
+        # weight initialization to match the scaled input space
+        random_indices = np.random.choice(data.shape[0], size=width * height, replace=True)
+        self.weights = data[random_indices].reshape(width, height, input_dim)
         
     def _get_bmu(self, sample):
         distances = np.linalg.norm(self.weights - sample, axis=2)
@@ -60,7 +61,8 @@ class SelfOrganizingMap:
                         self.weights[x, y, :] += lr * influence * (sample - self.weights[x, y, :])
 
 print("starting SOM ")
-som = SelfOrganizingMap(width=10, height=10, input_dim=X_scaled.shape[1], learning_rate=0.5)
+# Passed X_scaled into the data parameter for proper initialization
+som = SelfOrganizingMap(width=10, height=10, input_dim=X_scaled.shape[1], data=X_scaled, learning_rate=0.5)
 som.train(X_scaled, num_iterations=1000)
 
 print("learning SOM ended")
