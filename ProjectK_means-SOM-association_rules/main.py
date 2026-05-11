@@ -113,3 +113,86 @@ kmeans = KMeans(k=5, max_iters=100)
 cluster_labels = kmeans.fit(X_scaled)
 print("learning K-Means ended")
 print("first 10 cluster labels:", cluster_labels[:10])
+
+#ASSOCIATION RULES 
+def get_frequent_itemsets(transactions, min_support=0.1, max_length=2):
+    num_transactions = len(transactions)
+    item_counts = {}
+    
+    for transaction in transactions:
+        for item in transaction:
+            frozen_item = frozenset([item])
+            item_counts[frozen_item] = item_counts.get(frozen_item, 0) + 1
+            
+    # Filter by minimum support
+    frequent_itemsets = {itemset: count/num_transactions 
+                         for itemset, count in item_counts.items() 
+                         if count/num_transactions >= min_support}
+    
+    current_l = list(frequent_itemsets.keys())
+    k = 2
+    all_frequent = dict(frequent_itemsets)
+    
+    #Iteratively find k-itemsets
+    while current_l and k <= max_length:
+        candidates = set()
+        # Create combinations of length k
+        for i in range(len(current_l)):
+            for j in range(i+1, len(current_l)):
+                union_set = current_l[i] | current_l[j]
+                if len(union_set) == k:
+                    candidates.add(union_set)
+        
+        candidate_counts = {c: 0 for c in candidates}
+        for transaction in transactions:
+            transaction_set = set(transaction)
+            for candidate in candidates:
+                if candidate.issubset(transaction_set):
+                    candidate_counts[candidate] += 1
+                    
+        current_l = []
+        for candidate, count in candidate_counts.items():
+            support = count / num_transactions
+            if support >= min_support:
+                current_l.append(candidate)
+                all_frequent[candidate] = support
+        k += 1
+        
+    return all_frequent
+
+def generate_association_rules(frequent_itemsets, min_confidence=0.5):
+    rules = []
+    for itemset, support in frequent_itemsets.items():
+        if len(itemset) > 1:
+            for item in itemset:
+                antecedent = itemset - frozenset([item])
+                consequent = frozenset([item])
+                
+                if antecedent in frequent_itemsets:
+                    confidence = support / frequent_itemsets[antecedent]
+                    if confidence >= min_confidence:
+                        rules.append((antecedent, consequent, support, confidence))
+    return rules
+
+print("\nstarting Association Rules (Apriori)")
+
+#prepare transactions based on categorical columns 
+transactions = []
+for _, row in df[cat_cols].iterrows():
+    transaction = [f"{col}_{val}" for col, val in row.items()]
+    transactions.append(transaction)
+
+#run algorithm
+frequent_itemsets = get_frequent_itemsets(transactions, min_support=0.1, max_length=2)
+rules = generate_association_rules(frequent_itemsets, min_confidence=0.5)
+
+print("learning Association Rules ended")
+print(f"Found {len(frequent_itemsets)} frequent itemsets and {len(rules)} rules.")
+
+# Print the top 5 most confident rules
+rules.sort(key=lambda x: x[3], reverse=True)
+print("Top 5 Association Rules:")
+for i, (antecedent, consequent, support, confidence) in enumerate(rules[:5]):
+    ant_str = ', '.join(list(antecedent))
+    con_str = list(consequent)[0]
+    print(f"  Rule {i+1}: [{ant_str}] -> [{con_str}] | Support: {support:.2f}, Confidence: {confidence:.2f}")
