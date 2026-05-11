@@ -67,3 +67,49 @@ som.train(X_scaled, num_iterations=1000)
 
 print("learning SOM ended")
 print("weights:", som.weights.shape)
+
+
+
+# K-MEANS CLUSTERING
+class KMeans:
+    def __init__(self, k=5, max_iters=100, tol=1e-4):
+        self.k = k
+        self.max_iters = max_iters
+        self.tol = tol
+        self.centroids = None
+        
+    def fit(self, X):
+        np.random.seed(42)
+        # Randomly initialize centroids by picking k random data points
+        random_indices = np.random.choice(X.shape[0], self.k, replace=False)
+        self.centroids = X[random_indices]
+        
+        labels = np.zeros(X.shape[0])
+        for i in range(self.max_iters):
+            distances = np.linalg.norm(X[:, np.newaxis] - self.centroids, axis=2)
+
+            labels = np.argmin(distances, axis=1)
+            
+            # Calculate new centroids
+            new_centroids = np.zeros_like(self.centroids)
+            for j in range(self.k):
+                points = X[labels == j]
+                if len(points) > 0:
+                    new_centroids[j] = np.mean(points, axis=0)
+                else:
+                    new_centroids[j] = X[np.random.choice(X.shape[0])]
+                    
+            # Check for convergence 
+            if np.linalg.norm(self.centroids - new_centroids) < self.tol:
+                print(f"K-Means converged after {i+1} iterations.")
+                break
+                
+            self.centroids = new_centroids
+            
+        return labels
+
+print("\nstarting K-Means ")
+kmeans = KMeans(k=5, max_iters=100)
+cluster_labels = kmeans.fit(X_scaled)
+print("learning K-Means ended")
+print("first 10 cluster labels:", cluster_labels[:10])
