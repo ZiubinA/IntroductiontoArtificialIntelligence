@@ -1,5 +1,8 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.decomposition import PCA
 
 df = pd.read_csv('car_price_prediction_with_missing.csv')
 
@@ -196,3 +199,61 @@ for i, (antecedent, consequent, support, confidence) in enumerate(rules[:5]):
     ant_str = ', '.join(list(antecedent))
     con_str = list(consequent)[0]
     print(f"  Rule {i+1}: [{ant_str}] -> [{con_str}] | Support: {support:.2f}, Confidence: {confidence:.2f}")
+
+
+#SOM Visualization: U-Matrix (Distance Map)
+print("\nGenerating SOM U-Matrix plot...")
+u_matrix = np.zeros((som.width, som.height))
+for x in range(som.width):
+    for y in range(som.height):
+        neighbors = []
+        if x > 0: neighbors.append(som.weights[x-1, y, :])
+        if x < som.width - 1: neighbors.append(som.weights[x+1, y, :])
+        if y > 0: neighbors.append(som.weights[x, y-1, :])
+        if y < som.height - 1: neighbors.append(som.weights[x, y+1, :])
+        
+        distances = [np.linalg.norm(som.weights[x, y, :] - n) for n in neighbors]
+        u_matrix[x, y] = np.mean(distances)
+
+plt.figure(figsize=(8, 6))
+sns.heatmap(u_matrix, cmap='viridis')
+plt.title('Self-Organizing Map: U-Matrix (Neuron Distances)')
+plt.xlabel('SOM X-axis')
+plt.ylabel('SOM Y-axis')
+plt.show()
+
+
+#K-Means Visualization: Cluster Distribution
+print("Generating K-Means Cluster plot...")
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+plt.figure(figsize=(10, 8))
+scatter = plt.scatter(X_pca[:, 0], X_pca[:, 1], c=cluster_labels, cmap='tab10', alpha=0.7, edgecolor='k')
+plt.title('K-Means Cluster Distribution (PCA Reduced 2D Space)')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.legend(handles=scatter.legend_elements()[0], labels=[f'Cluster {i}' for i in range(kmeans.k)], title="Clusters")
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.show()
+
+
+#Association Rules Visualization: Support vs Confidence
+print("Generating Association Rules plot...")
+if len(rules) > 0:
+    supports = [rule[2] for rule in rules]
+    confidences = [rule[3] for rule in rules]
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(supports, confidences, alpha=0.7, color='coral', edgecolor='k', s=50)
+    plt.title('Association Rules: Support vs. Confidence')
+    plt.xlabel('Support (Frequency)')
+    plt.ylabel('Confidence (Reliability)')
+    plt.grid(True, linestyle='--', alpha=0.5)
+    
+    # Adding a legend for clarity even in a simple scatter plot
+    plt.scatter([], [], color='coral', edgecolor='k', label='Generated Rule')
+    plt.legend()
+    plt.show()
+else:
+    print("No rules generated to plot. Try lowering min_support or min_confidence.")
